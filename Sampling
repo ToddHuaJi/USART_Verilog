@@ -1,0 +1,44 @@
+module sampling(
+	reset,
+	pin_18,
+	clk,
+  data,
+  data_in,
+  dataReady,
+  
+);
+// I/O
+input reset;
+input clk;
+input pin_18;
+reg   data_in;
+reg   dataReady;
+output [7:0] data;
+reg [7:0] tempData;
+reg [3:0] sample_count;
+reg [2:0] byte_count;
+
+if (reset) begin
+  data_in <=0;
+	tempData <=0;
+	sample_count <=0;
+	byte_count <=0;
+	dataReady <=0;
+end
+if(negedge pin_18 )begin
+clk  <=0;
+data_in <=1;
+always @ (posedge data_in)
+	if(clk % (1.5+sample_count) ==0)begin
+	tempData[sample_count] <= pin_18;
+	sample_count <= sample_count +1;
+	end
+		if(sample_count == 7)begin
+	    data[7:0] = tempData[7:0];
+	    dataReady <=1;
+		data_in <=0;
+		byte_count <= byte_count +1;
+	    end
+end
+end
+endmodule
