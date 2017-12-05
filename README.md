@@ -5,8 +5,8 @@ Kai Qian
 Gongtao Yang(Todd)
 Conley Gao
 --------------------------------------------------
-sampling <------------Kai
-getData()<------------Todd, Conley
-up_counter<-----------Conley
+sampling <------------Kai \n
+getData()<------------Todd, Conley\n
+up_counter<-----------Conley\n
 
 main()   // not exist yet
