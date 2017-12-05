@@ -1,0 +1,19 @@
+module up_counter(
+out,
+enable,
+clk,
+reset,
+)
+wire clk_1;
+assign clk_1 = clk;
+output[1:0]out;
+input enable , clk ,reset;
+reg[1:0]out;
+
+always @(posedge ckl_1)
+if( reset) begin
+end else if (enable) begin 
+out <=out +1;
+end
+
+endmodule
