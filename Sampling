@@ -1,45 +1,100 @@
 module sampling(
-	reset,
-	pin_18,
-	clk,
-  	data,
-  	data_in,
-  	dataReady,
-  
+	reset,//reset
+	pin_18,// data from PC
+	clk,// clock
+  	data,//array stored datas
+  	data_in,//check if data is coming
+  	dataReady,// to tell next module that data ready
+  	bt1_in,//clock counter number for 1bt
+  	bt15_in, //clock counter number for 1.5bt
+  	bt1_out,//clock counter enable for 1bt
+  	bt15_out,//clock counter enable for 1.5bt
 );
+
 // I/O
 input reset;
 input clk;
 input pin_18;
+input bt1_in;
+input bt15_in;
+output bt1_out;
+output bt15_out;
 reg   data_in;
-reg   dataReady;
+output   dataReady;
 output [7:0] data;
-reg [7:0] tempData;
-reg [3:0] sample_count;
-reg [2:0] byte_count;
+reg [7:0] tempData;//stored data temperarily
 
 //--------------reset
+
 if (reset) begin
-  data_in <=0;
+
+    data_in <=0;
+
 	tempData <=0;
+
 	sample_count <=0;
-	byte_count <=0;
+
 	dataReady <=0;
+
 end
-if(negedge pin_18 )begin
-clk  <=0;
-data_in <=1;
-always @ (posedge data_in)
-	if(clk % (1.5+sample_count) ==0)begin
-	tempData[sample_count] <= pin_18;
-	sample_count <= sample_count +1;
+
+//--------------data is coming
+if(negedge pin_18 )begin// if the negative edge detected
+
+data_in <=1;// data is comming ready to read
+
+always @ (data_in)// loop that reading data
+
+	bt15_out <= 1;// enable the clock counter for 1.5bt
+
+	if(bt15_in)begin 
+	
+	bt1_out <= 1;// enable clock counter for 1bt
+
+	tempData[sample_count] <= pin_18;//store data to tempdata register
+
+	sample_count <= sample_count +1;// sample count plus one after reading every data
+
+	if(bt1_in)begin
+	
+	tempData[sample_count] <= pin_18;//store data to tempdata register
+
+	sample_count <= sample_count +1;// sample count plus one after reading every data
+
 	end
+	
+	end
+	
+//--------------see if a byte have been processed
 		if(sample_count == 7)begin
-	    data[7:0] = tempData[7:0];
-	    dataReady <=1;
-		data_in <=0;
-		byte_count <= byte_count +1;
+
+	    data[7:0] = tempData[7:0];// tranfer to output 
+
+	    dataReady <= 1;// telling next module that a byte data is ready
+
+		data_in <= 0;// reset data_in
+
 	    end
+
 end
 end
 endmodule
+
+module sample_counter(
+out, // output of the counter
+enable, //enable bit
+clk, //clock input
+reset,// reset
+);
+output [2:0] out;
+input enable, clk, reset;
+reg [2:0] out;
+//--------------counter start
+always @(posedge clk)
+if (reset) begin
+	out <= 3'8;
+end else if (enable) begin
+	out <= out+1;
+end
+endmodule
+
