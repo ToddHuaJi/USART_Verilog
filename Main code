@@ -1,19 +1,46 @@
-module up_counter(
-out,
-enable,
-clk,
-reset,
-)
+module byt_counter(
+out,     //output of the counter
+enable,	//enable for counter 
+clk,		//clock Input
+reset,	//reset input
+);
+// assign alternative clock
 wire clk_1;
 assign clk_1 = clk;
+//ouput ports (2) 
 output[1:0]out;
+//input ports (2)
 input enable , clk ,reset;
-reg[1:0]out;
+//internal variables  
+reg[1:0]out = 0; //initialize out =0 
 
-always @(posedge ckl_1)
-if( reset) begin
-end else if (enable) begin 
-out <=out +1;
+always @(posedge ckl_1)  // on positive edge
+if( reset || out == 2'b11) begin         // // if out = 2'b11 or reset = 1 
+	out<=2'b0;					// reset out to 0
+end else if (enable) begin   // enable =1 
+out <=out +1;						// countup
+end 
+
+endmodule
+
+module cyl_counter(
+input clk, 
+output [7:0] data,
+reset);
+wire clk_1;
+assign clk_1 = clk;    
+//----------Output Ports--------------
+     output [7:0] out;
+ //------------Input Ports--------------
+       input  clk, reset;
+  //------------Internal Variables--------
+    reg [7:0] out =0; // initialize out =0
+//-- Sensitive to rising edge
+always @(posedge clk_1) begin
+if(reset || out == 8'b10000000)begin //if reset or out =128
+out<= 0; //reset
+end else begin
+  //-- increment
+ out <= out + 1;
 end
-
 endmodule
