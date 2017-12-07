@@ -1,0 +1,65 @@
+////////////////////////////////
+//seperating 2nd byte///
+////////////////////////////////
+
+module Get_Data(
+dataIn	,// data input, data aftrer sample, 8-bit
+reset	,// reset button, hardwired
+dataOut	,// data output, pure 8-bit that light LED
+counter_en	,// let counter increment 1 
+byteNum	,//	which byte, determined by counter 
+clk		,// clock
+dataReady,// flag from sampling, psedge means incoming data
+LEDenable,// LED enable bit 
+);
+input [7:0] dataIn;//8bit 
+input reset;
+input [1:0] byteNum; // if [0] is 0 then byte 1 or 3, 1 then B2 
+input dataReady;
+input clk;
+
+//internal variables, TBD
+reg [7:0] 2ndByte;//temp storage of second byte 
+reg clk_1;// copy clk into this
+reg [7:0]on, off; // on/off value
+//O/P variable
+output [7:0] dataOut;
+output counter_en;
+
+//Operation starts here
+//<------------------------setting some initial values
+clk_l <= clk;//coppying clk
+on = 8'h90;//note on 
+of = 8'h80;//note off
+
+
+//<------------------------start op
+//dummy clk reset
+always @(posedge clk) begin 
+//nah
+end
+
+always @(posedge clk_l) begin
+//<------------------------count how many bytes
+if(dataReady)begin
+	counter_en = 1;//let counter increment 1
+end
+if(counter_en) begin
+	counter_en = 0;//if already 1 then set it back
+end 
+//<------------------------do stuff with data 
+if(byteNum[0] & dataReady) begin//==================================byte 2
+	2ndByte <= dataIn;//store this byte 
+	dataOut <= 2ndByte;//get to o/p
+	end 
+if((!byteNum[0])&(!byteNum[1])) begin //================byte 1 
+	if(dataIn & on) begin
+		LEDenanble = 1;//set led to on
+		end
+	else if(dataIn & off) begin
+		LEDenable = 0;//set led to off
+		end	
+	end
+
+end 
+endmodule 
