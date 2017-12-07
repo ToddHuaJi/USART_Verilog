@@ -107,7 +107,7 @@ module byt_counter(
 out,     //output of the counter
 enable,	//enable for counter 
 clk,		//clock Input
-reset	//reset input
+reset,	//reset input
 );
 // assign alternative clock
 wire clk_1;
@@ -119,14 +119,16 @@ input enable , clk ,reset;
 //internal variables  
 reg[1:0]out = 0; //initialize out =0 
 
-always @(posedge ckl_1)  // on positive edge
-if( reset || out == 2'b11) begin         // // if out = 2'b11 or reset = 1 
+always @(posedge clk_1)  // on positive edge
+if( reset ) begin         // // if out = 2'b11 or reset = 1 
 	out<=2'b0;					// reset out to 0
-end else if (enable) begin   // enable =1 
+end else if(  out == 2'b11 && enable )begin
+	out<=2'b1;
+end else if (out != 2'b11 &&enable) begin   // enable =1 
 out <=out +1;						// countup
 end 
 
-endmodule
+endmodule 
 
 module cyl_counter(
 input clk, 
