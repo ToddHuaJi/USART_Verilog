@@ -6,7 +6,9 @@ Gongtao Yang(Todd)
 Conley Gao
 --------------------------------------------------
 sampling <------------Kai 
+-------------------------------
 getData()<------------Todd, Conley
+-----------------------------
 up_counter<-----------Conley
-
-main()   // not exist yet
+---------------------------------
+main()   <------------Todd, in progress
