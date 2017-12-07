@@ -1,100 +1,84 @@
 module sampling(
+
 	reset,//reset
+
 	pin_18,// data from PC
+
 	clk,// clock
+
   	data,//array stored datas
-  	data_in,//check if data is coming
+
   	dataReady,// to tell next module that data ready
-  	bt1_in,//clock counter number for 1bt
-  	bt15_in, //clock counter number for 1.5bt
-  	bt1_out,//clock counter enable for 1bt
-  	bt15_out,//clock counter enable for 1.5bt
+
 );
 
 // I/O
+
 input reset;
+
 input clk;
+
 input pin_18;
-input bt1_in;
-input bt15_in;
-output bt1_out;
-output bt15_out;
-reg   data_in;
+
+reg   btEnable; // enable bit to control time counter
+
+reg   time_counter;// time counter number
+
+reg   clk_l;// same as clk
+
 output   dataReady;
+
 output [7:0] data;
+
 reg [7:0] tempData;//stored data temperarily
+
+reg [2:0] sample_count;//sample counter
+
+assign clk_1 = clk;  
 
 //--------------reset
 
+always @ (posedge clk or posedge reset)
 if (reset) begin
-
-    data_in <=0;
 
 	tempData <=0;
 
 	sample_count <=0;
+	
+	time_counter <=0;
+	
+	btEnable <=1;
 
-	dataReady <=0;
+end 
 
-end
 
 //--------------data is coming
-if(negedge pin_18 )begin// if the negative edge detected
+always @(negedge pin_18)// if the negative edge detected
+	if(btEnable)begin
+		time_counter <= time_counter + 1; //time counter increment
+		if(time_counter == 192)begin //if reset or out =192 which is 1.5BT
+			tempData[sample_count] <= pin_18;//store data to tempdata register
+			sample_count <= sample_count + 1;// sample count plus one after reading every data
+			time_counter <= 0; //reset time_counter
+			btEnable <=0; //reset time counter enable
+		end 
 
-data_in <=1;// data is comming ready to read
+		if(time_counter == 128 && btEnable ==0)begin //if reset or out =128 which is 1BT
 
-always @ (data_in)// loop that reading data
-
-	bt15_out <= 1;// enable the clock counter for 1.5bt
-
-	if(bt15_in)begin 
+			tempData[sample_count] <= pin_18;//store data to tempdata register
 	
-	bt1_out <= 1;// enable clock counter for 1bt
-
-	tempData[sample_count] <= pin_18;//store data to tempdata register
-
-	sample_count <= sample_count +1;// sample count plus one after reading every data
-
-	if(bt1_in)begin
-	
-	tempData[sample_count] <= pin_18;//store data to tempdata register
-
-	sample_count <= sample_count +1;// sample count plus one after reading every data
+			sample_count <= sample_count + 1;// sample count plus one after reading every data
+			
+				if(sample_count == 7)begin
+				
+					data[0] <= tempData[0];// tranfer to output 
+					
+					dataReady <= 1;// telling next module that a byte data is ready
+					
+					btEnable <= 0;// reset enable bit
+				
+				end
+		end 
 
 	end
-	
-	end
-	
-//--------------see if a byte have been processed
-		if(sample_count == 7)begin
-
-	    data[7:0] = tempData[7:0];// tranfer to output 
-
-	    dataReady <= 1;// telling next module that a byte data is ready
-
-		data_in <= 0;// reset data_in
-
-	    end
-
-end
-end
-endmodule
-
-module sample_counter(
-out, // output of the counter
-enable, //enable bit
-clk, //clock input
-reset,// reset
-);
-output [2:0] out;
-input enable, clk, reset;
-reg [2:0] out;
-//--------------counter start
-always @(posedge clk)
-if (reset) begin
-	out <= 3'8;
-end else if (enable) begin
-	out <= out+1;
-end
-endmodule
-
+endmodule 
