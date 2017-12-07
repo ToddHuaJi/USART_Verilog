@@ -176,49 +176,50 @@ input clk;
 //internal variables, TBD
 reg [7:0] sndByte;//temp storage of second byte 
 reg clk_1;// copy clk into this
-reg [7:0]on, off; // on/off value
+reg counter_e;
+reg LEDE;
 //O/P variable
 output [7:0] dataOut;
 output counter_en;
+output LEDenable;
 
+wire [7:0]cnm;
 //Operation starts here
 //<------------------------setting some initial values
-assign clk_l <= clk;//coppying clk
-on = 8'h90;//note on 
-of = 8'h80;//note off
-
+assign clk_l = clk;//coppying clk
+assign counter_en = counter_e;
+assign LEDenable = LEDE;
 
 //<------------------------start op
 //dummy clk reset
 always @(posedge clk) begin 
-counter_en <=0;
-dataOunt <= 8'b0;
+counter_e =0;
+ cnm <= 8'b0;
 end
 
 always @(posedge clk_l) begin
 //<------------------------count how many bytes
-if(dataReady)begin
-	counter_en <= 1;//let counter increment 1
-end
-if(counter_en) begin
-	counter_en <= 0;//if already 1 then set it back
-end 
-//<------------------------do stuff with data 
-if(byteNum[0] & dataReady) begin//==================================byte 2
-	sndByte <= dataIn;//store this byte 
-	dataOut <= sndByte;//get to o/p
+	if(dataReady)begin
+		counter_en <= 1'b1;//let counter increment 1
+	end
+	if(counter_en) begin
+		 counter_en <= 1'b0;//if already 1 then set it back
 	end 
-if((!byteNum[0])&(!byteNum[1])) begin //================byte 1 
-	if(dataIn & on) begin
-		LEDenanble = 1;//set led to on
-		end
-	else if(dataIn & off) begin
-		LEDenable = 0;//set led to off
-		end	
+//<------------------------do stuff with data 
+	if(byteNum[0] & dataReady) begin//==================================byte 2
+		assign sndByte = dataIn;//store this byte 
+		assign dataOut = sndByte;//get to o/p
+	end 
+	if((!byteNum[0])&(!byteNum[1])) begin //================byte 1 
+		if(dataIn == 8'h90) begin
+			 LEDenanble <= 1'b1;//set led to on
+			end
+		else if(dataIn == 8'h80) begin
+			LEDenable <= 1'b0;//set led to off
+			end	
 	end
 
 end 
-end
 endmodule 
 
 module Lab_4(
