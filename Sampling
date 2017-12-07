@@ -1,4 +1,4 @@
-module sampling(
+module PJ4(
 
 	reset,//reset
 
@@ -20,17 +20,19 @@ input clk;
 
 input pin_18;
 
-reg   btEnable; // enable bit to control time counter
+reg   btEnable =1; // enable bit to control time counter
 
 reg   time_counter;// time counter number
 
 reg   clk_l;// same as clk
 
+reg   flag;
+
 output   dataReady;
 
 output [7:0] data;
 
-reg [7:0] tempData;//stored data temperarily
+reg [7:0] tempData  =0;//stored data temperarily
 
 reg [2:0] sample_count;//sample counter
 
@@ -53,32 +55,33 @@ end
 
 
 //--------------data is coming
-always @(negedge pin_18)// if the negative edge detected
-	if(btEnable)begin
+always @ (posedge clk_1)begin
+	if(pin_18==0)begin// if the negative edge detected
+		while(btEnable)begin
 		time_counter <= time_counter + 1; //time counter increment
-		if(time_counter == 192)begin //if reset or out =192 which is 1.5BT
-			tempData[sample_count] <= pin_18;//store data to tempdata register
-			sample_count <= sample_count + 1;// sample count plus one after reading every data
-			time_counter <= 0; //reset time_counter
-			btEnable <=0; //reset time counter enable
-		end 
+			if(time_counter == 192)begin //if reset or out =192 which is 1.5BT
+				tempData[sample_count] <= pin_18;//store data to tempdata register
+				sample_count <= sample_count + 1;// sample count plus one after reading every data
+				time_counter <= 0; //reset time_counter
+				flag <=0; //reset time counter enable
+			end 
+			if(time_counter == 128 && flag ==0)begin //if reset or out =128 which is 1BT
 
-		if(time_counter == 128 && btEnable ==0)begin //if reset or out =128 which is 1BT
-
-			tempData[sample_count] <= pin_18;//store data to tempdata register
+				tempData[sample_count] <= pin_18;//store data to tempdata register
 	
-			sample_count <= sample_count + 1;// sample count plus one after reading every data
+				sample_count <= sample_count + 1;// sample count plus one after reading every data
+			
+				time_counter <= 0; //reset counter
 			
 				if(sample_count == 7)begin
 				
-					data[0] <= tempData[0];// tranfer to output 
+					//data[0] <= tempData[0];// tranfer to output 
 					
-					dataReady <= 1;// telling next module that a byte data is ready
-					
-					btEnable <= 0;// reset enable bit
+					//dataReady <= sample_counter;// telling next module that a byte data is ready
 				
 				end
-		end 
-
+			end
+		end
 	end
+end
 endmodule 
