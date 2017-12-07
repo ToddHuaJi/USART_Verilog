@@ -1,3 +1,108 @@
+/*
+Kai
+*/
+module sampling(
+	reset,//reset
+	pin_18,// data from PC
+	clk,// clock
+  	data,//array stored datas
+  	dataReady,// to tell next module that data ready
+  	bt1_in,//clock counter number for 1bt
+  	bt15_in, //clock counter number for 1.5bt
+  	bt1_out,//clock counter enable for 1bt
+  	bt15_out,//clock counter enable for 1.5bt
+);
+
+// I/O
+input reset;
+input clk;
+input pin_18;
+input bt1_in;
+input bt15_in;
+output bt1_out;
+output bt15_out;
+reg   data_in;
+output   dataReady;
+output [7:0] data;
+reg [7:0] tempData;//stored data temperarily
+
+//--------------reset
+
+if (reset) begin
+
+    data_in <=0;
+
+	tempData <=0;
+
+	sample_count <=0;
+
+	dataReady <=0;
+
+end
+
+//--------------data is coming
+if(negedge pin_18 )begin// if the negative edge detected
+
+data_in <=1;// data is comming ready to read
+
+always @ (data_in)// loop that reading data
+
+	bt15_out <= 1;// enable the clock counter for 1.5bt
+
+	if(bt15_in)begin 
+	
+	bt1_out <= 1;// enable clock counter for 1bt
+
+	tempData[sample_count] <= pin_18;//store data to tempdata register
+
+	sample_count <= sample_count +1;// sample count plus one after reading every data
+
+	if(bt1_in)begin
+	
+	tempData[sample_count] <= pin_18;//store data to tempdata register
+
+	sample_count <= sample_count +1;// sample count plus one after reading every data
+
+	end
+	
+	end
+	
+//--------------see if a byte have been processed
+		if(sample_count == 7)begin
+
+	    data[7:0] = tempData[7:0];// tranfer to output 
+
+	    dataReady <= 1;// telling next module that a byte data is ready
+
+		data_in <= 0;// reset data_in
+
+	    end
+
+end
+end
+endmodule
+
+module sample_counter(
+out, // output of the counter
+enable, //enable bit
+clk, //clock input
+reset,// reset
+);
+output [2:0] out;
+input enable, clk, reset;
+reg [2:0] out;
+//--------------counter start
+always @(posedge clk)
+if (reset) begin
+	out <= 3'8;
+end else if (enable) begin
+	out <= out+1;
+end
+endmodule
+
+/*
+Conley
+*/
 module byt_counter(
 out,     //output of the counter
 enable,	//enable for counter 
@@ -31,8 +136,7 @@ wire clk_1;
 assign clk_1 = clk;    
 //----------Output Ports--------------
      output [7:0] out;
- //------------Input Ports--------------
-       input  clk, reset;
+ 
   //------------Internal Variables--------
     reg [7:0] out =0; // initialize out =0
 //-- Sensitive to rising edge
@@ -44,3 +148,135 @@ end else begin
  out <= out + 1;
 end
 endmodule
+
+/*
+Todd
+*/////////////////////////////////
+//seperating 2nd byte///
+////////////////////////////////
+
+module Get_Data(
+dataIn	,// data input, data aftrer sample, 8-bit
+reset	,// reset button, hardwired
+dataOut	,// data output, pure 8-bit that light LED
+counter_en	,// let counter increment 1 
+byteNum	,//	which byte, determined by counter 
+clk		,// clock
+dataReady,// flag from sampling, psedge means incoming data
+LEDenable,// LED enable bit 
+);
+input [7:0] dataIn;//8bit 
+input reset;
+input [1:0] byteNum; // if [0] is 0 then byte 1 or 3, 1 then B2 
+input dataReady;
+input clk;
+
+//internal variables, TBD
+reg [7:0] sndByte;//temp storage of second byte 
+reg clk_1;// copy clk into this
+reg [7:0]on, off; // on/off value
+//O/P variable
+output [7:0] dataOut;
+output counter_en;
+
+//Operation starts here
+//<------------------------setting some initial values
+assign clk_l <= clk;//coppying clk
+on = 8'h90;//note on 
+of = 8'h80;//note off
+
+
+//<------------------------start op
+//dummy clk reset
+always @(posedge clk) begin 
+//nah
+end
+
+always @(posedge clk_l) begin
+//<------------------------count how many bytes
+if(dataReady)begin
+	counter_en = 1;//let counter increment 1
+end
+if(counter_en) begin
+	counter_en = 0;//if already 1 then set it back
+end 
+//<------------------------do stuff with data 
+if(byteNum[0] & dataReady) begin//==================================byte 2
+	sndByte <= dataIn;//store this byte 
+	dataOut <= sndByte;//get to o/p
+	end 
+if((!byteNum[0])&(!byteNum[1])) begin //================byte 1 
+	if(dataIn & on) begin
+		LEDenanble = 1;//set led to on
+		end
+	else if(dataIn & off) begin
+		LEDenable = 0;//set led to off
+		end	
+	end
+
+end 
+end
+endmodule 
+
+module Lab_4(
+clk,	// clock
+reset,	// reset signal 
+midi,	// midi input data line, 1 bit per BT
+LED	// LED light value, 1 byte 
+);
+input clk;
+input reset;
+input midi;
+
+output [7:0] LED;
+
+// wires and reg
+wire midi_l;//wire version of midi
+wire reset_l;
+wire [7:0]sndByte_LED;// data o/p of get_data
+wire LEDon;// LEDenable signal 
+wire [7:0]dataLine; //sampled data ready to be processed 
+wire dataReady; //signal for 1 byte data sampled
+wire clk_1;//clk 1 
+wire [1:0]ByteNum;//# of current byte
+
+
+reg [7:0]zero = 8'b0;//8-bit zero
+
+
+
+/*
+	Main code start here:
+*/
+always @(posedge clk)begin 
+if(reset) begin
+	LED <= zero;
+	LEDon <= 0;
+//nah
+end
+end
+
+assign midi_l = midi;
+assign reset_l = reset;
+assign LED = sndByte_LED; 
+assign clk_l = clk;
+
+
+always @(posedge clk_l)begin
+
+//<<<----------------------------data in, Sampling
+samping sample(reset_l, midi_l, clk_l, dataLine, dataReady, , , , );
+
+//<<<----------------------------Sampling done, processing
+Get_data Process(dataLine, reset_l, sndByte_LED,ByteNum ,clk_l, dataReady, LEDon);
+ 
+
+//<<<----------------------------LED
+if(!LEDon)begin // Turning off LED, note is done
+	LED <= zero;// all 0, aka off
+end 
+
+end 
+
+endmodule
+ 
