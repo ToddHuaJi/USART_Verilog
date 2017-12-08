@@ -1,8 +1,10 @@
 module sb(
    input        clk,
-   input        i_Rx_Serial,
-   output       o_Rx_DV,
-   output [7:0] o_Rx_Byte
+   input		reset,
+   input        i_Rx_Serial,//data input
+   output       o_Rx_DV,//data ready flag bit
+   output [7:0] o_Rx_Byte//data byte 
+
    );
  /*
  * states
@@ -13,7 +15,7 @@ module sb(
   reg[3:0] s_RX_STOP_BIT  = 3'b011;
   reg[3:0] s_CLEANUP      = 3'b100;
   
-  reg[7:0] CLKS_PER_BIT = 8'b10000000;//128 cycle per bit in midi 
+  reg[7:0] CLKS_PER_BIT = 8'd8;//128 cycle per bit in midi 
   wire clk_l;
   assign clk_l=clk;
    
@@ -25,11 +27,23 @@ module sb(
   reg [7:0]     r_Rx_Byte     = 0;
   reg           r_Rx_DV       = 0;
   reg [2:0]     r_SM_Main     = 0;
+  
+  reg            n            = 0; 
+   
    
   // Purpose: Double-register the incoming data.
   // This allows it to be used in the UART RX Clock Domain.
   // (It removes problems caused by metastability)
-  always @(posedge clk_l)
+  
+  /*always @(posedge clk)begin
+   if(!reset) begin
+		//nah
+   end
+   end
+  */
+  
+  
+  always @(posedge clk)
     begin
       r_Rx_Data_R <= i_Rx_Serial;
       r_Rx_Data   <= r_Rx_Data_R;
@@ -37,18 +51,20 @@ module sb(
    
    
   // Purpose: Control RX state machine
-  always @(posedge clk_l)
+  always @(posedge clk)
     begin
        
       case (r_SM_Main)
         s_IDLE :
           begin
+			n<=n+1;
             r_Rx_DV       <= 1'b0;
             r_Clock_Count <= 0;
             r_Bit_Index   <= 0;
-             
-            if (r_Rx_Data == 1'b0)          // Start bit detected
+            if (r_Rx_Data == 1'b0) begin         // Start bit detected
               r_SM_Main <= s_RX_START_BIT;
+              
+              end
             else
               r_SM_Main <= s_IDLE;
           end
@@ -64,6 +80,7 @@ module sb(
                     r_SM_Main     <= s_RX_DATA_BITS;
                   end
                 else
+				
                   r_SM_Main <= s_IDLE;
               end
             else
@@ -133,7 +150,7 @@ module sb(
          
       endcase
     end   
-   
+  
   assign o_Rx_DV   = r_Rx_DV;
   assign o_Rx_Byte = r_Rx_Byte;
    
