@@ -43,25 +43,20 @@ module sb(
   */
   
   
-  always @(posedge clk)
-    begin
-      r_Rx_Data_R <= i_Rx_Serial;
-      r_Rx_Data   <= r_Rx_Data_R;
-    end
    
    
   // Purpose: Control RX state machine
   always @(posedge clk)
     begin
-       
+
       case (r_SM_Main)
         s_IDLE :
           begin
 			n<=n+1;
-            r_Rx_DV       <= 1'b0;
+          //  r_Rx_DV       <= 1'b0;
             r_Clock_Count <= 0;
             r_Bit_Index   <= 0;
-            if (r_Rx_Data == 1'b0) begin         // Start bit detected
+            if (i_Rx_Serial == 1'b0) begin         // Start bit detected
               r_SM_Main <= s_RX_START_BIT;
               
               end
@@ -74,7 +69,7 @@ module sb(
           begin
             if (r_Clock_Count == (CLKS_PER_BIT-1)/2)
               begin
-                if (r_Rx_Data == 1'b0)
+                if (i_Rx_Serial == 1'b0)
                   begin
                     r_Clock_Count <= 0;  // reset counter, found the middle
                     r_SM_Main     <= s_RX_DATA_BITS;
@@ -102,6 +97,8 @@ module sb(
             else
               begin
                 r_Clock_Count          <= 0;
+                r_Rx_Data_R <= i_Rx_Serial;
+				r_Rx_Data   <= r_Rx_Data_R;
                 r_Rx_Byte[r_Bit_Index] <= r_Rx_Data;
                  
                 // Check if we have received all bits
