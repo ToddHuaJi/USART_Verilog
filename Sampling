@@ -1,87 +1,271 @@
-module PJ4(
+module uart_rx
+  #(parameter CLKS_PER_BIT)
 
-	reset,//reset
+  (
 
-	pin_18,// data from PC
+   input        clk,
 
-	clk,// clock
+   input        data_in,
 
-  	data,//array stored datas
+   output       data_Ready,
 
-  	dataReady,// to tell next module that data ready
+   output [7:0] data,
 
-);
+   );
 
-// I/O
+    
 
-input reset;
+ // parameter s_IDLE         = 3'b000;
 
-input clk;
+  //parameter s_RX_START_BIT = 3'b001;
 
-input pin_18;
+  //parameter s_RX_DATA_BITS = 3'b010;
 
-reg   btEnable =1; // enable bit to control time counter
+ // parameter s_RX_STOP_BIT  = 3'b011;
 
-reg   time_counter;// time counter number
+ // parameter s_CLEANUP      = 3'b100;
 
-reg   clk_l;// same as clk
+  reg clk_1;
 
-reg   flag;
+  assign clk_1 <= clk;
+ 
+  reg           data_temp = 1'b1;
 
-output   dataReady;
+  reg           data_1   = 1'b1;// use in sampling bit
 
-output [7:0] data;
+  reg           s1=3'b000;// idle
+  
+  reg           s2=3'b001;// 
+  
+  reg           s3=3'b010;//
+  
+  reg           s4=3'b011;//
+  
+  reg           s5=3'b100;// clean up
+  
+  reg [7:0]     cycle_count = 0;// 128(1BT),192(1.5BT)
 
-reg [7:0] tempData  =0;//stored data temperarily
+  reg [2:0]     bit_count   = 0; //8 bits total
 
-reg [2:0] sample_count;//sample counter
+  reg [7:0]     temp_data_byte     = 0;// store data  temporarily
 
-assign clk_1 = clk;  
+  reg           control_bit     = 0;// control state
 
-//--------------reset
+  reg [2:0]     state_count     = 0;// state count
 
-always @ (posedge clk or posedge reset)
-if (reset) begin
+   
 
-	tempData <=0;
+  // Purpose: Double-register the incoming data.
 
-	sample_count <=0;
-	
-	time_counter <=0;
-	
-	btEnable <=1;
+  // This allows it to be used in the UART RX Clock Domain.
 
-end 
+  // (It removes problems caused by metastability)
+
+  always @(posedge clk_1)
+
+    begin
+
+      data_temp <= data_in;
+
+      data_1   <= data_temp;
+
+    end
+
+  // Purpose: Control RX state machine
+
+  always @(posedge clk_1)
+
+    begin
+
+       
+
+      case (state_count)
+
+        s_IDLE :
+
+          begin
+
+            control_bit <= 1'b0;
+
+            cycle_count <= 0;
+
+            bit_count   <= 0;
+
+            if (data_1 == 1'b0)          // Start bit detected
+
+              state_count <= s2;
+
+            else
+
+              state_count <= s1;
+
+          end
+
+         
+
+        // Check middle of start bit to make sure it's still low
+
+        s_RX_START_BIT :
+
+          begin
+
+            if (cycle_count == 192)
+
+              begin
+
+                if (data_1 == 1'b0)
+
+                  begin
+
+                    cycle_count <= 0;  // reset counter, found the middle
+
+                    state_count <= s3;
+
+                  end
+
+                else
+
+                  state_count <= s1;
+
+              end
+
+            else
+
+              begin
+
+                cycle_count <= cycle_count + 1;
+
+                state_count <= s2;
+
+              end
+
+          end // case: s_RX_START_BIT
+
+         
+
+         
+
+        // Wait CLKS_PER_BIT-1 clock cycles to sample serial data
+
+        s_RX_DATA_BITS :
+
+          begin
+
+            if (cycle_count == 128 )
+
+              begin
+              
+                cycle_count  <= 0;
+
+                temp_data_byte[bit_count] <= data_1;
 
 
-//--------------data is coming
-always @ (posedge clk_1)begin
-	if(pin_18==0)begin// if the negative edge detected
-		while(btEnable)begin
-		time_counter <= time_counter + 1; //time counter increment
-			if(time_counter == 192)begin //if reset or out =192 which is 1.5BT
-				tempData[sample_count] <= pin_18;//store data to tempdata register
-				sample_count <= sample_count + 1;// sample count plus one after reading every data
-				time_counter <= 0; //reset time_counter
-				flag <=0; //reset time counter enable
-			end 
-			if(time_counter == 128 && flag ==0)begin //if reset or out =128 which is 1BT
+              end
 
-				tempData[sample_count] <= pin_18;//store data to tempdata register
-	
-				sample_count <= sample_count + 1;// sample count plus one after reading every data
-			
-				time_counter <= 0; //reset counter
-			
-				if(sample_count == 7)begin
-				
-					//data[0] <= tempData[0];// tranfer to output 
-					
-					//dataReady <= sample_counter;// telling next module that a byte data is ready
-				
-				end
-			end
-		end
-	end
-end
-endmodule 
+            else
+
+              begin
+ 
+                cycle_count <= cycle_count + 1;
+
+                state_count     <= s3;
+
+                // Check if we have received all bits
+
+                if (bit_count < 7)
+
+                  begin
+
+                    bit_count <= bit_count + 1;
+
+                    state_count   <= s3;
+
+                  end
+
+                else
+
+                  begin
+
+                    bit_count <= 0;
+
+                    state_count   <= s4;
+
+                  end
+
+              end
+
+          end // case: s_RX_DATA_BITS
+
+     
+
+     
+
+        // Receive Stop bit.  Stop bit = 1
+
+        s_RX_STOP_BIT :
+
+          begin
+
+            // Wait CLKS_PER_BIT-1 clock cycles for Stop bit to finish
+/*
+            if (cycle_count < CLKS_PER_BIT-1)
+
+              begin
+
+                cycle_count <= cycle_count + 1;
+
+                state_count     <= s4;
+
+              end
+*/
+            if( bit_count == 7)
+
+              begin
+
+                control_bit       <= 1'b1;
+
+                cycle_count <= 0;
+
+                state_count     <= s5;
+
+              end
+
+          end // case: s_RX_STOP_BIT
+
+     
+
+         
+
+        // Stay here 1 clock
+
+        s_CLEANUP :
+
+          begin
+
+            state_count <= s1;
+
+            control_bit   <= 1'b0;
+
+          end
+
+
+
+        default :
+
+          state_count <= s1;
+
+         
+
+      endcase
+
+    end   
+
+   
+
+  assign data_Ready   = control_bit;
+
+  assign data = temp_data_byte;
+
+   
+
+endmodule // uart_rx
