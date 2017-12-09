@@ -1,232 +1,251 @@
-/*
-Kai
-*/
-module sampling(
-	reset,//reset
-	pin_18,// data from PC
-	clk,// clock
-  	data,//array stored datas
-  	dataReady,// to tell next module that data ready
-  	bt1_in,//clock counter number for 1bt
-  	bt15_in, //clock counter number for 1.5bt
-  	bt1_out,//clock counter enable for 1bt
-  	bt15_out,//clock counter enable for 1.5bt
+module get_data(
+input[7:0] dataIn,//input data
+input dataReady,//data ready flag
+input clk,// clock
+input reset,// reset signal
+output[7:0] LED//LED o/p
 );
 
-// I/O
-input reset;
-input clk;
-input pin_18;
-input bt1_in;
-input bt15_in;
-output bt1_out;
-output bt15_out;
-reg   data_in;
-output   dataReady;
-output [7:0] data;
-reg [7:0] tempData;//stored data temperarily
+reg[2:0] Byte_Count = 0;//byte count, 0 and 3 is on/.off, 1 and 4 is data
+reg[7:0] data_temp;// temp data storage 
+reg[7:0] LED_out;// LED value
 
-//--------------reset
 
-if (reset) begin
 
-    data_in <=0;
+wire clk_l;
 
-	tempData <=0;
+assign clk_l = clk;
 
-	sample_count <=0;
 
-	dataReady <=0;
-
-end
-
-//--------------data is coming
-if(negedge pin_18 )begin// if the negative edge detected
-
-data_in <=1;// data is comming ready to read
-
-always @ (data_in)// loop that reading data
-
-	bt15_out <= 1;// enable the clock counter for 1.5bt
-
-	if(bt15_in)begin 
-	
-	bt1_out <= 1;// enable clock counter for 1bt
-
-	tempData[sample_count] <= pin_18;//store data to tempdata register
-
-	sample_count <= sample_count +1;// sample count plus one after reading every data
-
-	if(bt1_in)begin
-	
-	tempData[sample_count] <= pin_18;//store data to tempdata register
-
-	sample_count <= sample_count +1;// sample count plus one after reading every data
-
-	end
-	
-	end
-	
-//--------------see if a byte have been processed
-		if(sample_count == 7)begin
-
-	    data[7:0] = tempData[7:0];// tranfer to output 
-
-	    dataReady <= 1;// telling next module that a byte data is ready
-
-		data_in <= 0;// reset data_in
-
-	    end
-
-end
-end
-endmodule
-
-module sample_counter(
-out, // output of the counter
-enable, //enable bit
-clk, //clock input
-reset// reset
-);
-output [2:0] out;
-input enable, clk, reset;
-reg [2:0] out;
-//--------------counter start
 always @(posedge clk)
-if (reset) begin
-	out <= 3'8;
-end else if (enable) begin
-	out <= out+1;
-end
-endmodule
-
-/*
-Conley
-*/
-module byt_counter(
-out,     //output of the counter
-enable,	//enable for counter 
-clk,		//clock Input
-reset,	//reset input
-);
-// assign alternative clock
-wire clk_1;
-assign clk_1 = clk;
-//ouput ports (2) 
-output[1:0]out;
-//input ports (2)
-input enable , clk ,reset;
-//internal variables  
-reg[1:0]out = 0; //initialize out =0 
-
-always @(posedge clk_1)  // on positive edge
-if( reset ) begin         // // if out = 2'b11 or reset = 1 
-	out<=2'b0;					// reset out to 0
-end else if(  out == 2'b11 && enable )begin
-	out<=2'b1;
-end else if (out != 2'b11 &&enable) begin   // enable =1 
-out <=out +1;						// countup
-end 
-
-endmodule 
-
-module cyl_counter(
- clk, 
-  out,
-reset,
-);
-wire clk_1;
-assign clk_1 = clk;    
-//----------Output Ports--------------
-     output[7:0] out;
- //------------Input Ports--------------
-       input  clk, reset;
-  //------------Internal Variables--------
-    reg[7:0] out ; // 
-//-- Sensitive to rising edge
-always @(posedge clk_1)begin
-if(reset)begin //if reset or out =128
- out<=8'b0; //reset
-end else if (out == 8'b10000000)begin
-out <= 8'b00000001;
-end else begin
-  //-- increment
- out <= out + 1;
-end
-end
-endmodule 
-/*
-Todd
-*/////////////////////////////////
-//seperating 2nd byte///
-////////////////////////////////
-
-module Get_Data(
-dataIn	,// data input, data aftrer sample, 8-bit
-reset	,// reset button, hardwired
-dataOut	,// data output, pure 8-bit that light LED
-counter_en	,// let counter increment 1 
-byteNum	,//	which byte, determined by counter 
-clk		,// clock
-dataReady,// flag from sampling, psedge means incoming data
-LEDenable,// LED enable bit 
-);
-input [7:0] dataIn;//8bit 
-input reset;
-input [1:0] byteNum; // if [0] is 0 then byte 1 or 3, 1 then B2 
-input dataReady;
-input clk;
-
-//internal variables, TBD
-reg [7:0] sndByte;//temp storage of second byte 
-reg clk_1;// copy clk into this
-reg counter_e;
-reg LEDE;
-//O/P variable
-output [7:0] dataOut;
-output counter_en;
-output LEDenable;
-
-wire [7:0]cnm;
-//Operation starts here
-//<------------------------setting some initial values
-assign clk_l = clk;//coppying clk
-assign counter_en = counter_e;
-assign LEDenable = LEDE;
-
-//<------------------------start op
-//dummy clk reset
-always @(posedge clk) begin 
-counter_e =0;
- cnm <= 8'b0;
+if(!reset) begin
+//nah
 end
 
-always @(posedge clk_l) begin
-//<------------------------count how many bytes
-	if(dataReady)begin
-		counter_en <= 1'b1;//let counter increment 1
+always @(posedge clk_l)begin
+
+data_temp <= dataIn;//save data
+
+case(Byte_Count)
+	3'b000://byte 1, turning on 
+	begin
+		if(dataReady)begin 
+			Byte_Count = 3'b001;//next byte 
+		end
+		else
+			Byte_Count = 3'b000;
+	end 
+
+	3'b001://byte 2, data on
+	begin
+		if(dataReady)begin
+			LED_out <= data_temp;//moving data 
+			Byte_Count = 3'b010;//next 
+		end
+		else
+			Byte_Count = 3'b001;
 	end
-	if(counter_en) begin
-		 counter_en <= 1'b0;//if already 1 then set it back
-	end 
-//<------------------------do stuff with data 
-	if(byteNum[0] & dataReady) begin//==================================byte 2
-		assign sndByte = dataIn;//store this byte 
-		assign dataOut = sndByte;//get to o/p
-	end 
-	if((!byteNum[0])&(!byteNum[1])) begin //================byte 1 
-		if(dataIn == 8'h90) begin
-			 LEDenanble <= 1'b1;//set led to on
-			end
-		else if(dataIn == 8'h80) begin
-			LEDenable <= 1'b0;//set led to off
-			end	
+	
+	3'b010://byte 3
+	begin
+		if(dataReady)begin
+			Byte_Count = 3'b011;//next, end of first note
+		end
+		else
+			Byte_Count = 3'b010;
 	end
 
-end 
-endmodule 
+	3'b011://byte 4
+	begin
+		if(dataReady)begin
+			LED_out <= 8'b0;
+			Byte_Count = 3'b100;//next
+		end 
+		else
+			Byte_Count = 3'b011;
+	end
+	
+	3'b100://byte 5, really just sit and do nothing
+	begin
+		if(dataReady)begin
+			Byte_Count = 3'b101;//next
+		end else
+			Byte_Count = 3'b100;
+	end
+	
+	3'b101://byte 6, ready to loop back
+	begin 
+		if(dataReady)begin
+			Byte_Count = 3'b000;//loop back 
+		end else
+			Byte_Count = 3'b101;
+	end
+	
+	
+	
+	default:
+		Byte_Count = 0;
+endcase//end of case
 
-module Lab_4(
+end//end of clk_l
+
+assign LED = LED_out;//
+
+endmodule 
+module sample(
+   input        clk,
+   input		reset,
+   input        i_Rx_Serial,//data input
+   output       o_Rx_DV,//data ready flag bit
+   output [7:0] o_Rx_Byte//data byte 
+
+   );
+ /*
+ * states
+ */
+  reg[3:0] s_IDLE         = 3'b000;
+  reg[3:0] s_RX_START_BIT = 3'b001;
+  reg[3:0] s_RX_DATA_BITS = 3'b010;
+  reg[3:0] s_RX_STOP_BIT  = 3'b011;
+  reg[3:0] s_CLEANUP      = 3'b100;
+  
+  reg[7:0] CLKS_PER_BIT = 8'd8;//128 cycle per bit in midi 
+  wire clk_l;
+  assign clk_l=clk;
+   
+  reg           r_Rx_Data_R = 1'b1;
+  reg           r_Rx_Data   = 1'b1;
+   
+  reg [7:0]     r_Clock_Count = 0;
+  reg [2:0]     r_Bit_Index   = 0; //8 bits total
+  reg [7:0]     r_Rx_Byte     = 0;
+  reg           r_Rx_DV       = 0;
+  reg [2:0]     r_SM_Main     = 0;
+  
+ 
+   
+  // Purpose: Double-register the incoming data.
+  // This allows it to be used in the UART RX Clock Domain.
+  // (It removes problems caused by metastability)
+  
+  /*always @(posedge clk)begin
+   if(!reset) begin
+		//nah
+   end
+   end
+  */
+  
+  
+   
+   
+  // Purpose: Control RX state machine
+  always @(posedge clk_l)
+    begin
+
+      case (r_SM_Main)
+        s_IDLE :
+          begin
+		
+          //  r_Rx_DV       <= 1'b0;
+            r_Clock_Count <= 0;
+            r_Bit_Index   <= 0;
+            if (i_Rx_Serial == 1'b0) begin         // Start bit detected
+              r_SM_Main <= s_RX_START_BIT;
+              
+              end
+            else
+              r_SM_Main <= s_IDLE;
+          end
+         
+        // Check middle of start bit to make sure it's still low
+        s_RX_START_BIT :
+          begin
+            if (r_Clock_Count == (CLKS_PER_BIT-1)/2)
+              begin
+                if (i_Rx_Serial == 1'b0)
+                  begin
+                    r_Clock_Count <= 0;  // reset counter, found the middle
+                    r_SM_Main     <= s_RX_DATA_BITS;
+                  end
+                else
+				
+                  r_SM_Main <= s_IDLE;
+              end
+            else
+              begin
+                r_Clock_Count <= r_Clock_Count + 1;
+                r_SM_Main     <= s_RX_START_BIT;
+              end
+          end // case: s_RX_START_BIT
+         
+         
+        // Wait CLKS_PER_BIT-1 clock cycles to sample serial data
+        s_RX_DATA_BITS :
+          begin
+            if (r_Clock_Count < CLKS_PER_BIT-1)
+              begin
+                r_Clock_Count <= r_Clock_Count + 1;
+                r_SM_Main     <= s_RX_DATA_BITS;
+              end
+            else
+              begin
+                r_Clock_Count          <= 0;
+                r_Rx_Data_R <= i_Rx_Serial;
+				r_Rx_Data   <= r_Rx_Data_R;
+                r_Rx_Byte[r_Bit_Index] <= r_Rx_Data;
+                 
+                // Check if we have received all bits
+                if (r_Bit_Index < 7)
+                  begin
+                    r_Bit_Index <= r_Bit_Index + 1;
+                    r_SM_Main   <= s_RX_DATA_BITS;
+                  end
+                else
+                  begin
+                    r_Bit_Index <= 0;
+                    r_SM_Main   <= s_RX_STOP_BIT;
+                  end
+              end
+          end // case: s_RX_DATA_BITS
+     
+     
+        // Receive Stop bit.  Stop bit = 1
+        s_RX_STOP_BIT :
+          begin
+            // Wait CLKS_PER_BIT-1 clock cycles for Stop bit to finish
+            if (r_Clock_Count < CLKS_PER_BIT-1)
+              begin
+                r_Clock_Count <= r_Clock_Count + 1;
+                r_SM_Main     <= s_RX_STOP_BIT;
+              end
+            else
+              begin
+                r_Rx_DV       <= 1'b1;
+                r_Clock_Count <= 0;
+                r_SM_Main     <= s_CLEANUP;
+              end
+          end // case: s_RX_STOP_BIT
+     
+         
+        // Stay here 1 clock
+        s_CLEANUP :
+          begin
+            r_SM_Main <= s_IDLE;
+            r_Rx_DV   <= 1'b0;
+          end
+         
+         
+        default :
+          r_SM_Main <= s_IDLE;
+         
+      endcase
+    end   
+  
+  assign o_Rx_DV   = r_Rx_DV;
+  assign o_Rx_Byte = r_Rx_Byte;
+   
+endmodule // uart_rx
+module usar(
 clk,	// clock
 reset,	// reset signal 
 midi,	// midi input data line, 1 bit per BT
@@ -245,46 +264,35 @@ wire [7:0]sndByte_LED;// data o/p of get_data
 wire LEDon;// LEDenable signal 
 wire [7:0]dataLine; //sampled data ready to be processed 
 wire dataReady; //signal for 1 byte data sampled
-wire clk_1;//clk 1 
+
 wire [1:0]ByteNum;//# of current byte
+//reg [7:0]zero = 8'b0;//8-bit zero
 
 
-reg [7:0]zero = 8'b0;//8-bit zero
+//main vars
+//reg [7:0] LED;
+//wire clk_1;//clk 1 
+//assign clk_l = clk;
+//assign LED = 
+///sample output
+wire enable ; // enable 
+wire [7:0]nbit ;
+// getdata out
 
+//<<<----------------------------data in, Sampling
+sample n_byte(clk,reset,midi,enable,nbit);
 
-
+//<<<----------------------------Sampling done, processing
+get_data Process(nbit, enable,clk,reset,LED);
 /*
 	Main code start here:
 */
-always @(posedge clk)begin 
-if(reset) begin
-	LED <= zero;
-	LEDon <= 0;
-//nah
-end
+/*always @(posedge clk)begin 
+
+
 end
 
-assign midi_l = midi;
-assign reset_l = reset;
-assign LED = sndByte_LED; 
-assign clk_l = clk;
 
+end*/ 
 
-always @(posedge clk_l)begin
-
-//<<<----------------------------data in, Sampling
-samping sample(reset_l, midi_l, clk_l, dataLine, dataReady, , , , );
-
-//<<<----------------------------Sampling done, processing
-Get_data Process(dataLine, reset_l, sndByte_LED,ByteNum ,clk_l, dataReady, LEDon);
- 
-
-//<<<----------------------------LED
-if(!LEDon)begin // Turning off LED, note is done
-	LED <= zero;// all 0, aka off
-end 
-
-end 
-
-endmodule
- 
+endmodule 
