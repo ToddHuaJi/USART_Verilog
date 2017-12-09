@@ -17,12 +17,14 @@ wire clk_l;
 assign clk_l = clk;
 
 
-always @(posedge clk)
-if(!reset) begin
-//nah
-end
 
 always @(posedge clk_l)begin
+	if(!reset)begin
+		Byte_Count<=0;
+		LED_out<=0;
+	end
+
+
 
 data_temp <= dataIn;//save data
 
@@ -30,61 +32,61 @@ case(Byte_Count)
 	3'b000://byte 1, turning on 
 	begin
 		if(dataReady)begin 
-			Byte_Count = 3'b001;//next byte 
+			Byte_Count <= 3'b001;//next byte 
 		end
 		else
-			Byte_Count = 3'b000;
+			Byte_Count <= 3'b000;
 	end 
 
 	3'b001://byte 2, data on
 	begin
 		if(dataReady)begin
 			LED_out <= data_temp;//moving data 
-			Byte_Count = 3'b010;//next 
+			Byte_Count <= 3'b010;//next 
 		end
 		else
-			Byte_Count = 3'b001;
+			Byte_Count <= 3'b001;
 	end
 	
 	3'b010://byte 3
 	begin
 		if(dataReady)begin
-			Byte_Count = 3'b011;//next, end of first note
+			Byte_Count <= 3'b011;//next, end of first note
 		end
 		else
-			Byte_Count = 3'b010;
+			Byte_Count <= 3'b010;
 	end
 
 	3'b011://byte 4
 	begin
 		if(dataReady)begin
 			LED_out <= 8'b0;
-			Byte_Count = 3'b100;//next
+			Byte_Count <= 3'b100;//next
 		end 
 		else
-			Byte_Count = 3'b011;
+			Byte_Count <= 3'b011;
 	end
 	
 	3'b100://byte 5, really just sit and do nothing
 	begin
 		if(dataReady)begin
-			Byte_Count = 3'b101;//next
+			Byte_Count <= 3'b101;//next
 		end else
-			Byte_Count = 3'b100;
+			Byte_Count <= 3'b100;
 	end
 	
 	3'b101://byte 6, ready to loop back
 	begin 
 		if(dataReady)begin
-			Byte_Count = 3'b000;//loop back 
+			Byte_Count <= 3'b000;//loop back 
 		end else
-			Byte_Count = 3'b101;
+			Byte_Count <= 3'b101;
 	end
 	
 	
 	
 	default:
-		Byte_Count = 0;
+		Byte_Count <= 0;
 endcase//end of case
 
 end//end of clk_l
@@ -127,15 +129,6 @@ module sample(
   // Purpose: Double-register the incoming data.
   // This allows it to be used in the UART RX Clock Domain.
   // (It removes problems caused by metastability)
-  
-  /*always @(posedge clk)begin
-   if(!reset) begin
-		//nah
-   end
-   end
-  */
-  
-  
    
    
   // Purpose: Control RX state machine
@@ -149,6 +142,12 @@ module sample(
   // Purpose: Control RX state machine
   always @(posedge clk_l)
     begin
+   if(!reset) begin
+		r_SM_Main <= s_IDLE;
+		r_Clock_Count <= 0;
+		r_Rx_DV       <= 0;
+		r_Rx_Byte     <= 0;
+   end
        
       case (r_SM_Main)
         s_IDLE :
