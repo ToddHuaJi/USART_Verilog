@@ -109,7 +109,7 @@ module sample(
   reg[3:0] s_RX_STOP_BIT  = 3'b011;
   reg[3:0] s_CLEANUP      = 3'b100;
   
-  reg[7:0] CLKS_PER_BIT = 8'd8;//128 cycle per bit in midi 
+  reg[7:0] CLKS_PER_BIT = 8'b10000000;// 128 cycle per bit in midi 
   wire clk_l;
   assign clk_l=clk;
    
