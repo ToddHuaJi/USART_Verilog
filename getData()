@@ -1,65 +1,94 @@
-////////////////////////////////
-//seperating 2nd byte///
-////////////////////////////////
-
-module Get_Data(
-dataIn	,// data input, data aftrer sample, 8-bit
-reset	,// reset button, hardwired
-dataOut	,// data output, pure 8-bit that light LED
-counter_en	,// let counter increment 1 
-byteNum	,//	which byte, determined by counter 
-clk		,// clock
-dataReady,// flag from sampling, psedge means incoming data
-LEDenable,// LED enable bit 
+module Lab_4(
+input[7:0] dataIn,//input data
+input dataReady,//data ready flag
+input clk,// clock
+input reset,// reset signal
+output[7:0] LED//LED o/p
 );
-input [7:0] dataIn;//8bit 
-input reset;
-input [1:0] byteNum; // if [0] is 0 then byte 1 or 3, 1 then B2 
-input dataReady;
-input clk;
 
-//internal variables, TBD
-reg [7:0] 2ndByte;//temp storage of second byte 
-reg clk_1;// copy clk into this
-reg [7:0]on, off; // on/off value
-//O/P variable
-output [7:0] dataOut;
-output counter_en;
-
-//Operation starts here
-//<------------------------setting some initial values
-clk_l <= clk;//coppying clk
-on = 8'h90;//note on 
-of = 8'h80;//note off
+reg[2:0] Byte_Count = 0;//byte count, 0 and 3 is on/.off, 1 and 4 is data
+reg[7:0] data_temp;// temp data storage 
+reg[7:0] LED_out;// LED value
 
 
-//<------------------------start op
-//dummy clk reset
-always @(posedge clk) begin 
+
+wire clk_l;
+
+assign clk_l = clk;
+
+
+always @(posedge clk)
+if(!reset) begin
 //nah
 end
 
-always @(posedge clk_l) begin
-//<------------------------count how many bytes
-if(dataReady)begin
-	counter_en = 1;//let counter increment 1
-end
-if(counter_en) begin
-	counter_en = 0;//if already 1 then set it back
-end 
-//<------------------------do stuff with data 
-if(byteNum[0] & dataReady) begin//==================================byte 2
-	2ndByte <= dataIn;//store this byte 
-	dataOut <= 2ndByte;//get to o/p
-	end 
-if((!byteNum[0])&(!byteNum[1])) begin //================byte 1 
-	if(dataIn & on) begin
-		LEDenanble = 1;//set led to on
+always @(posedge clk_l)begin
+
+data_temp <= dataIn;//save data
+
+case(Byte_Count)
+	3'b000://byte 1, turning on 
+	begin
+		if(dataReady)begin 
+			Byte_Count = 3'b001;//next byte 
 		end
-	else if(dataIn & off) begin
-		LEDenable = 0;//set led to off
-		end	
+		else
+			Byte_Count = 3'b000;
+	end 
+
+	3'b001://byte 2, data on
+	begin
+		if(dataReady)begin
+			LED_out <= data_temp;//moving data 
+			Byte_Count = 3'b010;//next 
+		end
+		else
+			Byte_Count = 3'b001;
+	end
+	
+	3'b010://byte 3
+	begin
+		if(dataReady)begin
+			Byte_Count = 3'b011;//next, end of first note
+		end
+		else
+			Byte_Count = 3'b010;
 	end
 
-end 
+	3'b011://byte 4
+	begin
+		if(dataReady)begin
+			LED_out <= 8'b0;
+			Byte_Count = 3'b100;//next
+		end 
+		else
+			Byte_Count = 3'b011;
+	end
+	
+	3'b100://byte 5, really just sit and do nothing
+	begin
+		if(dataReady)begin
+			Byte_Count = 3'b101;//next
+		end else
+			Byte_Count = 3'b100;
+	end
+	
+	3'b101://byte 6, ready to loop back
+	begin 
+		if(dataReady)begin
+			Byte_Count = 3'b000;//loop back 
+		end else
+			Byte_Count = 3'b101;
+	end
+	
+	
+	
+	default:
+		Byte_Count = 0;
+endcase//end of case
+
+end//end of clk_l
+
+assign LED = LED_out;//
+
 endmodule 
